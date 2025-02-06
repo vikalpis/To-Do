@@ -1,22 +1,21 @@
-import { useEffect } from "react";
-const TodoReminder = ({ todo, time }) => {
-  // Register Service Worker
-useEffect(() => {
-  if ("serviceWorker" in navigator) {
-    navigator.serviceWorker.register("/service-worker.js")
-      .then((registration) => {
-        console.log("Service Worker Registered", registration);
-        
-        // Ensure it's controlling the page
-        if (!navigator.serviceWorker.controller) {
-          window.location.reload(); // Refresh to let SW take control
-        }
-      })
-      .catch((err) => console.log("Service Worker Registration Failed", err));
-  }
-}, []);
 
-  // Schedule Reminder
+
+import { useEffect } from "react"
+
+const TodoReminder = ({ todo, time }) => {
+  useEffect(() => {
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker
+        .register("/service-worker.js")
+        .then((registration) => {
+          console.log("Service Worker registered successfully:", registration.scope)
+        })
+        .catch((error) => {
+          console.error("Service Worker registration failed:", error)
+        })
+    }
+  }, [])
+
   const scheduleReminder = () => {
     if (!todo || !time) {
       alert("Please ensure task and time are set!")
@@ -24,28 +23,48 @@ useEffect(() => {
     }
 
     const delay = new Date(time) - new Date()
-    const taskName = todo
-
-    if (delay > 0) {
-      setTimeout(() => {
-        if (navigator.serviceWorker.controller) {
-          navigator.serviceWorker.controller.postMessage({
-            title: "Reminder!",
-            body: `Time to complete: ${taskName}`,
-          })
-        } else {
-          new Notification("Reminder!", {
-            body: `Time to complete: ${taskName}`,
-            icon: "notification-icon.png",
-          })
-        }
-      }, delay)
+    if (delay <= 0) {
+      alert("Please select a future time for the reminder.")
+      return
     }
-    alert("Reminder Set Successfully!")
+
+    const scheduleNotification = () => {
+      if ("Notification" in window) {
+        Notification.requestPermission().then((permission) => {
+          if (permission === "granted") {
+            setTimeout(() => {
+              new Notification("Reminder!", {
+                body: `Time to complete: ${todo}`,
+                icon: "/notification-icon.png", // Make sure this icon exists in your public folder
+              })
+            }, delay)
+            alert("Reminder set successfully!")
+          } else {
+            alert("Notification permission denied. Reminder will not be shown.")
+          }
+        })
+      } else {
+        // Fallback for browsers that don't support Notification API
+        setTimeout(() => {
+          alert(`Reminder: Time to complete ${todo}`)
+        }, delay)
+        alert("Reminder set successfully (will use alert)!")
+      }
+    }
+
+    if (navigator.serviceWorker && navigator.serviceWorker.controller) {
+      navigator.serviceWorker.controller.postMessage({
+        type: "SCHEDULE_NOTIFICATION",
+        todo,
+        time,
+      })
+    } else {
+      scheduleNotification()
+    }
   }
 
   return (
-    <button onClick={scheduleReminder} className="bg-blue-900 mt-1 text-white px-2 py-1 rounded hover:bg-blue-700">
+    <button onClick={scheduleReminder} className="bg-blue-900 text-white px-2 py-1 mt-1 rounded hover:bg-blue-700">
       Set Reminder
     </button>
   )

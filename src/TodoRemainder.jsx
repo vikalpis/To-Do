@@ -3,18 +3,16 @@
 import { useEffect } from "react"
 
 const TodoReminder = ({ todo, time }) => {
+
   useEffect(() => {
-    if ("serviceWorker" in navigator) {
-      navigator.serviceWorker
-        .register("/service-worker.js")
-        .then((registration) => {
-          console.log("Service Worker registered successfully:", registration.scope)
-        })
-        .catch((error) => {
-          console.error("Service Worker registration failed:", error)
-        })
-    }
-  }, [])
+  if ("Notification" in window) {
+    Notification.requestPermission().then((permission) => {
+      if (permission !== "granted") {
+        alert("Please allow notifications for reminders!");
+      }
+    });
+  }
+}, []);
 
   const scheduleReminder = () => {
     if (!todo || !time) {
